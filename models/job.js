@@ -6,73 +6,75 @@ const { sqlForPartialUpdate, sqlForFiltering } = require("../helpers/sql");
 
 /** Related functions for companies. */
 
-class Company {
-  /** Create a company (from data), update db, return new company data.
+class Job {
+  /** Create a job (from data), update db, return new job data.
    *
-   * data should be { handle, name, description, numEmployees, logoUrl }
+   * data should be { title, salary, equity, companyHandle }
    *
-   * Returns { handle, name, description, numEmployees, logoUrl }
+   * Returns { id, title, salary, equity, companyHandle }
    *
-   * Throws BadRequestError if company already in database.
+   * Throws BadRequestError if companyHandle does not exist in database.
    * */
 
-  static async create({ handle, name, description, numEmployees, logoUrl }) {
-    const duplicateCheck = await db.query(
-      `SELECT handle
+  static async create({ title, salary, equity, companyHandle }) {
+    const companyExists = await db.query(
+      `SELECT handle, name
            FROM companies
            WHERE handle = $1`,
-      [handle]
+      [companyHandle]
     );
-
-    if (duplicateCheck.rows[0])
-      throw new BadRequestError(`Duplicate company: ${handle}`);
+    if (companyExists.rows.length === 0)
+      throw new NotFoundError(`Company does not exist: ${companyHandle}`);
 
     const result = await db.query(
-      `INSERT INTO companies
-           (handle, name, description, num_employees, logo_url)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING handle, name, description, num_employees AS "numEmployees", logo_url AS "logoUrl"`,
-      [handle, name, description, numEmployees, logoUrl]
+      `INSERT INTO jobs
+           (title, salary, equity, company_handle)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, title, salary, equity, company_handle AS "companyHandle"`,
+      [title, salary, equity, companyHandle]
     );
-    const company = result.rows[0];
+    const job = result.rows[0];
 
-    return company;
+    return job;
   }
 
-  /** Find all companies.
+  /** Find all jobs.
    *
-   * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
+   * Returns [{ id, title, salary, equity, companyHandle }, ...]
    * */
 
   static async findAll(filters) {
-    if (!filters) {
-      const companiesRes = await db.query(`
-        SELECT handle,
-          name,
-          description,
-          num_employees AS "numEmployees",
-          logo_url AS "logoUrl"
-        FROM companies
-        ORDER BY name`);
-      return companiesRes.rows;
-    }
     const jsToSql = {
-      name: "name",
-      minEmployees: "num_employees",
-      maxEmployees: "num_employees",
+      title: "title",
+      minSalary: "salary",
+      hasEquity: "equity",
     };
-    const { setFilters, values } = sqlForFiltering(filters, jsToSql);
-    const sqlQuery = `
-      SELECT handle,
-        name,
-        description,
-        num_employees AS "numEmployees",
-        logo_url AS "logoUrl"
-      FROM companies
-      ${setFilters}
-      ORDER BY name`;
-    const companiesRes = await db.query(sqlQuery, [...values]);
-    return companiesRes.rows;
+    if (filters) {
+      const { setFilters, values } = sqlForFiltering(filters, jsToSql);
+      const sqlQuery = `
+            SELECT id,
+              title,
+              salary,
+              equity,
+              company_handle AS "companyHandle"
+            FROM jobs
+            ${setFilters}`;
+      console.log(sqlQuery);
+      if (filters.hasEquity && !filters.title && !filters.minSalary) {
+        const jobsRes = await db.query(sqlQuery);
+        return jobsRes.rows;
+      }
+      const jobsRes = await db.query(sqlQuery, [...values]);
+      return jobsRes.rows;
+    }
+    const jobsRes = await db.query(`
+        SELECT id,
+          title,
+          salary,
+          equity,
+          company_handle AS "companyHandle"
+        FROM jobs`);
+    return jobsRes.rows;
   }
 
   /** Given a company handle, return data about company.
@@ -156,4 +158,4 @@ class Company {
   }
 }
 
-module.exports = Company;
+module.exports = Job;
