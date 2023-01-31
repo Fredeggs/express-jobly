@@ -5,6 +5,7 @@ const request = require("supertest");
 const db = require("../db.js");
 const app = require("../app");
 const User = require("../models/user");
+const Job = require("../models/job");
 
 const {
   commonBeforeAll,
@@ -141,6 +142,7 @@ describe("GET /users", function () {
           lastName: "U1L",
           email: "user1@user.com",
           isAdmin: false,
+          jobs: [expect.any(Number), expect.any(Number)],
         },
         {
           username: "u2",
@@ -148,6 +150,7 @@ describe("GET /users", function () {
           lastName: "U2L",
           email: "user2@user.com",
           isAdmin: false,
+          jobs: [],
         },
         {
           username: "u3",
@@ -155,6 +158,7 @@ describe("GET /users", function () {
           lastName: "U3L",
           email: "user3@user.com",
           isAdmin: false,
+          jobs: [],
         },
       ],
     });
@@ -187,7 +191,7 @@ describe("GET /users", function () {
 /************************************** GET /users/:username */
 
 describe("GET /users/:username", function () {
-  test("works for users", async function () {
+  test("works for admins", async function () {
     const resp = await request(app)
       .get(`/users/u1`)
       .set("authorization", `Bearer ${u1Token}`);
@@ -198,6 +202,7 @@ describe("GET /users/:username", function () {
         lastName: "U1L",
         email: "user1@user.com",
         isAdmin: false,
+        jobs: [expect.any(Number), expect.any(Number)],
       },
     });
   });
@@ -326,6 +331,49 @@ describe("DELETE /users/:username", function () {
   test("not found if user missing", async function () {
     const resp = await request(app)
       .delete(`/users/nope`)
+      .set("authorization", `Bearer ${u1Token}`);
+    expect(resp.statusCode).toEqual(404);
+  });
+});
+
+/************************************** POST /users/:username/jobs/:id */
+
+describe("POST /users/:username/jobs/:id", function () {
+  test("works for users (and admins)", async function () {
+    const newJob = await Job.create({
+      title: "j1",
+      salary: 50000,
+      equity: 0.0005,
+      companyHandle: "c1",
+    });
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${newJob.id}`)
+      .set("authorization", `Bearer ${u2Token}`);
+    expect(resp.body).toEqual({
+      applied: newJob.id.toString(),
+    });
+  });
+
+  test("unauth for anon", async function () {
+    const newJob = await Job.create({
+      title: "j1",
+      salary: 50000,
+      equity: 0.0005,
+      companyHandle: "c1",
+    });
+    const resp = await request(app).post(`/users/u1/jobs/${newJob.id}`);
+    expect(resp.statusCode).toEqual(401);
+  });
+
+  test("not found if user not found", async function () {
+    const newJob = await Job.create({
+      title: "j1",
+      salary: 50000,
+      equity: 0.0005,
+      companyHandle: "c1",
+    });
+    const resp = await request(app)
+      .post(`/users/DNE/jobs/${newJob.id}`)
       .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(404);
   });

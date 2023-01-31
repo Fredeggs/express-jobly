@@ -33,27 +33,34 @@ async function commonBeforeAll() {
     description: "Desc3",
     logoUrl: "http://c3.img",
   });
+  await Company.create({
+    handle: "c4",
+    name: "C4",
+    numEmployees: 4,
+    description: "Desc4",
+    logoUrl: "http://c4.img",
+  });
 
-  await Job.create({
+  const j1 = await Job.create({
     title: "j1",
     salary: 50000,
     equity: 0.0005,
     companyHandle: "c1",
   });
-  await Job.create({
+  const j2 = await Job.create({
     title: "j2",
     salary: 60000,
     equity: 0.0006,
     companyHandle: "c2",
   });
-  await Job.create({
+  const j3 = await Job.create({
     title: "j3",
     salary: 100000,
     equity: 0,
     companyHandle: "c3",
   });
 
-  await User.register({
+  const u1 = await User.register({
     username: "u1",
     firstName: "U1F",
     lastName: "U1L",
@@ -61,7 +68,7 @@ async function commonBeforeAll() {
     password: "password1",
     isAdmin: false,
   });
-  await User.register({
+  const u2 = await User.register({
     username: "u2",
     firstName: "U2F",
     lastName: "U2L",
@@ -69,7 +76,7 @@ async function commonBeforeAll() {
     password: "password2",
     isAdmin: false,
   });
-  await User.register({
+  const u3 = await User.register({
     username: "u3",
     firstName: "U3F",
     lastName: "U3L",
@@ -77,6 +84,9 @@ async function commonBeforeAll() {
     password: "password3",
     isAdmin: false,
   });
+
+  await User.apply({ username: u1.username, jobId: j1.id });
+  await User.apply({ username: u1.username, jobId: j2.id });
 }
 
 async function commonBeforeEach() {

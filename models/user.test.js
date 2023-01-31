@@ -7,6 +7,7 @@ const {
 } = require("../expressError");
 const db = require("../db.js");
 const User = require("./user.js");
+const Job = require("./job.js");
 const {
   commonBeforeAll,
   commonBeforeEach,
@@ -117,6 +118,7 @@ describe("findAll", function () {
         lastName: "U1L",
         email: "u1@email.com",
         isAdmin: false,
+        jobs: [expect.any(Number), expect.any(Number)],
       },
       {
         username: "u2",
@@ -124,6 +126,7 @@ describe("findAll", function () {
         lastName: "U2L",
         email: "u2@email.com",
         isAdmin: false,
+        jobs: [],
       },
     ]);
   });
@@ -140,6 +143,7 @@ describe("get", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
+      jobs: [expect.any(Number), expect.any(Number)],
     });
   });
 
@@ -214,14 +218,64 @@ describe("update", function () {
 describe("remove", function () {
   test("works", async function () {
     await User.remove("u1");
-    const res = await db.query(
-        "SELECT * FROM users WHERE username='u1'");
+    const res = await db.query("SELECT * FROM users WHERE username='u1'");
     expect(res.rows.length).toEqual(0);
   });
 
   test("not found if no such user", async function () {
     try {
       await User.remove("nope");
+      fail();
+    } catch (err) {
+      expect(err instanceof NotFoundError).toBeTruthy();
+    }
+  });
+});
+
+/************************************** apply */
+
+describe("apply", function () {
+  test("works", async function () {
+    const newJob = await Job.create({
+      title: "test title",
+      salary: 80000,
+      equity: 0.0005,
+      companyHandle: "c1",
+    });
+    const applicationRes = await User.apply({
+      username: "u2",
+      jobId: newJob.id,
+    });
+    expect(applicationRes).toEqual({ applied: newJob.id });
+
+    const application = await db.query(`
+    SELECT username, job_id AS "jobId"
+    FROM applications
+    WHERE username = 'u2'`);
+    expect(application.rows[0]).toEqual({
+      username: "u2",
+      jobId: newJob.id,
+    });
+  });
+
+  test("not found if no such user", async function () {
+    const newJob = await Job.create({
+      title: "test title",
+      salary: 80000,
+      equity: 0.0005,
+      companyHandle: "c1",
+    });
+    try {
+      await User.apply("doesn't exist", newJob.id);
+      fail();
+    } catch (err) {
+      expect(err instanceof NotFoundError).toBeTruthy();
+    }
+  });
+
+  test("not found if no such job id exists", async function () {
+    try {
+      await User.apply("u1", 0);
       fail();
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();

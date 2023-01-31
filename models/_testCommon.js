@@ -13,13 +13,15 @@ async function commonBeforeAll() {
     INSERT INTO companies(handle, name, num_employees, description, logo_url)
     VALUES ('c1', 'C1', 1, 'Desc1', 'http://c1.img'),
            ('c2', 'C2', 2, 'Desc2', 'http://c2.img'),
-           ('c3', 'C3', 3, 'Desc3', 'http://c3.img')`);
+           ('c3', 'C3', 3, 'Desc3', 'http://c3.img'),
+           ('c4', 'C4', 4, 'Desc4', 'http://c4.img')`);
 
-  await db.query(`
+  jobs = await db.query(`
     INSERT INTO jobs(title, salary, equity, company_handle)
     VALUES ('j1', 50000, 0.0005, 'c1'),
            ('j2', 60000, 0.0006, 'c2'),
-           ('j3', 100000, 0, 'c3')`);
+           ('j3', 100000, 0, 'c3')
+    RETURNING id`);
 
   await db.query(
     `
@@ -36,6 +38,10 @@ async function commonBeforeAll() {
       await bcrypt.hash("password2", BCRYPT_WORK_FACTOR),
     ]
   );
+  await db.query(`
+    INSERT INTO applications(username, job_id)
+    VALUES ('u1', ${jobs.rows[0].id}),
+           ('u1', ${jobs.rows[1].id})`);
 }
 
 async function commonBeforeEach() {
